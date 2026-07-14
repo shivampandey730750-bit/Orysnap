@@ -1,4 +1,4 @@
-# OrySnap 📸✨
+# OrySnap 📸✨ 
 
 OrySnap is a full-stack, Instagram-style social media web application. It features a responsive mobile-first React frontend and a real-time Node.js/Express backend powered by SQLite (via Prisma ORM) and Socket.io.
 
