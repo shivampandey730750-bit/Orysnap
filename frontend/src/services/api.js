@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '', // Handled by Vite proxies in development
+  baseURL: import.meta.env.VITE_API_URL || '', // Handled by environment variable or fallback to proxy in dev
 });
 
 // Request interceptor to automatically add authorization token

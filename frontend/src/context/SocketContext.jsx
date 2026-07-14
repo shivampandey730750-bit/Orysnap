@@ -18,8 +18,8 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    // Connect to backend WebSocket server (proxied or full path)
-    const newSocket = io(window.location.origin, {
+    // Connect to backend WebSocket server (using environment variable or fallback to same origin)
+    const newSocket = io(import.meta.env.VITE_API_URL || window.location.origin, {
       transports: ['websocket'],
     });
 
