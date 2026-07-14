@@ -116,7 +116,13 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   };
 
   const handleDeleteStory = async (storyId) => {
+    if (!storyId) {
+      alert('Error: Story ID is undefined or missing.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this story?')) return;
+    
+    console.log('Attempting to delete story ID:', storyId);
     try {
       await api.delete(`/api/stories/${storyId}`);
       
@@ -125,7 +131,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
         if (uIdx === currentUserIndex) {
           return {
             ...userGroup,
-            stories: userGroup.stories.filter((s) => s._id !== storyId),
+            stories: userGroup.stories.filter((s) => (s._id || s.id) !== storyId),
           };
         }
         return userGroup;
@@ -230,7 +236,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteStory(activeStory._id);
+                  handleDeleteStory(activeStory?._id || activeStory?.id);
                 }}
                 className="p-1 text-white/70 hover:text-red-500 transition-colors z-45"
                 title="Delete Story"
