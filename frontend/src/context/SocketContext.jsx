@@ -27,6 +27,16 @@ export const SocketProvider = ({ children }) => {
   const audioCtxRef = useRef(null);
   const audioOscRef = useRef(null);
 
+  const activeCallRef = useRef(activeCall);
+  const localStreamRef = useRef(localStream);
+  const isVideoCallRef = useRef(isVideoCall);
+  const callUserRef = useRef(callUser);
+
+  useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
+  useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
+  useEffect(() => { isVideoCallRef.current = isVideoCall; }, [isVideoCall]);
+  useEffect(() => { callUserRef.current = callUser; }, [callUser]);
+
   // Audio Synthesis Ringtone
   const playRingtone = () => {
     try {
@@ -319,7 +329,7 @@ export const SocketProvider = ({ children }) => {
     // Handle incoming call signaling
     newSocket.on('incoming_call', ({ isVideo, callerId, callerName, callerPic }) => {
       // If we are already busy, auto decline incoming
-      if (activeCall) {
+      if (activeCallRef.current) {
         newSocket.emit('end_call', { targetId: callerId });
         return;
       }
@@ -354,7 +364,7 @@ export const SocketProvider = ({ children }) => {
         if (!pc) {
           if (signal.offer) {
             console.log('Creating PeerConnection in response to remote offer');
-            const stream = localStream || await captureMedia(isVideoCall);
+            const stream = localStreamRef.current || await captureMedia(isVideoCallRef.current);
             pc = createPeerConnection(senderId, stream);
           } else {
             console.warn('PeerConnection not initialized yet. Delaying candidate/answer processing...');
@@ -380,7 +390,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user, activeCall, callUser, isVideoCall, localStream]);
+  }, [user]);
 
   return (
     <SocketContext.Provider value={{
