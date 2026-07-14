@@ -21,7 +21,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const activeUser = localGrouped[currentUserIndex];
   const activeStory = activeUser?.stories[currentStoryIndex];
 
-  // Reset counters when opening/closing or switching users
+  // Reset counters when opening
   useEffect(() => {
     if (isOpen) {
       setCurrentUserIndex(initialUserIndex);
@@ -29,7 +29,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
       setProgress(0);
       setLocalGrouped(groupedStories);
     }
-  }, [isOpen, initialUserIndex, groupedStories]);
+  }, [isOpen, initialUserIndex]);
 
   // Mark story as seen on display
   useEffect(() => {
