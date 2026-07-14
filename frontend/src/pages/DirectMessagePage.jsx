@@ -29,6 +29,8 @@ const DirectMessagePage = () => {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const [localStream, setLocalStream] = useState(null);
 
   // Handle call duration ticking
   useEffect(() => {
@@ -99,11 +101,38 @@ const DirectMessagePage = () => {
     }
   };
 
-  const handleStartCall = (video = false) => {
+  const startLocalVideo = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+    } catch (err) {
+      console.warn('Failed to access camera:', err);
+    }
+  };
+
+  const stopLocalVideo = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+  };
+
+  // Bind local stream to video player
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  const handleStartCall = async (video = false) => {
     setIsVideoCall(video);
     setActiveCall('ringing');
     setCallDuration(0);
     playRingtone();
+
+    if (video) {
+      await startLocalVideo();
+    }
     
     // Simulate connection after 4 seconds
     setTimeout(() => {
@@ -119,6 +148,7 @@ const DirectMessagePage = () => {
 
   const handleEndCall = () => {
     stopRingtone();
+    stopLocalVideo();
     setActiveCall(null);
     setCallDuration(0);
   };
@@ -546,13 +576,23 @@ const DirectMessagePage = () => {
                   className="w-full h-full object-cover opacity-80"
                 />
                 
-                {/* Mock Self Stream in overlay */}
+                {/* Mock Self Stream in overlay - uses live camera stream */}
                 <div className="absolute bottom-4 right-4 w-28 aspect-video rounded-xl overflow-hidden bg-neutral-800 border-2 border-white shadow-lg">
-                  <img
-                    src={currentUser?.profilePic}
-                    alt="your stream"
-                    className="w-full h-full object-cover"
-                  />
+                  {localStream ? (
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                  ) : (
+                    <img
+                      src={currentUser?.profilePic}
+                      alt="your stream"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 
                 <span className="absolute top-4 left-4 text-xs font-semibold bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-md">
