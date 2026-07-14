@@ -159,3 +159,33 @@ export const markStoryAsSeen = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Delete a story
+// @route   DELETE /api/stories/:id
+// @access  Protected
+export const deleteStory = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const story = await prisma.story.findUnique({
+      where: { id },
+    });
+
+    if (!story) {
+      return res.status(404).json({ message: 'Story not found' });
+    }
+
+    if (story.userId !== req.user.id) {
+      return res.status(401).json({ message: 'You are not authorized to delete this story' });
+    }
+
+    await prisma.story.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Story deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

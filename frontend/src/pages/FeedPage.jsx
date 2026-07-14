@@ -277,6 +277,7 @@ const FeedPage = () => {
         onClose={handleStoryViewerClose}
         groupedStories={stories}
         initialUserIndex={activeStoryUserIdx}
+        onStoryDeleted={fetchStories}
       />
     </div>
   );

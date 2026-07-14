@@ -1,5 +1,5 @@
 import express from 'express';
-import { createStory, getFeedStories, markStoryAsSeen } from '../controllers/storyController.js';
+import { createStory, getFeedStories, markStoryAsSeen, deleteStory } from '../controllers/storyController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
@@ -10,5 +10,6 @@ router.use(protect);
 router.post('/', upload.single('media'), createStory);
 router.get('/feed', getFeedStories);
 router.post('/:id/seen', markStoryAsSeen);
+router.delete('/:id', deleteStory);
 
 export default router;

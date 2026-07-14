@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserIndex = 0 }) => {
+const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserIndex = 0, onStoryDeleted }) => {
+  const { user: currentUser } = useAuth();
   const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -92,6 +94,26 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     }
   };
 
+  const handleDeleteStory = async (storyId) => {
+    if (!window.confirm('Are you sure you want to delete this story?')) return;
+    try {
+      await api.delete(`/api/stories/${storyId}`);
+      
+      if (onStoryDeleted) {
+        onStoryDeleted(storyId);
+      }
+      
+      if (activeUser.stories.length <= 1) {
+        onClose();
+      } else {
+        handleNextStory();
+      }
+    } catch (error) {
+      console.error('Failed to delete story:', error);
+      alert('Failed to delete story. Please try again.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 transition-all">
       {/* Close button */}
@@ -120,16 +142,29 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
         </div>
 
         {/* User Info Header */}
-        <div className="absolute top-6 left-3 right-3 flex items-center gap-3.5 z-35 p-1 text-white">
-          <img
-            src={activeUser.user.profilePic}
-            alt={activeUser.user.username}
-            className="w-8 h-8 rounded-full object-cover border border-white/40"
-          />
-          <span className="font-semibold text-sm drop-shadow">{activeUser.user.username}</span>
-          <span className="text-xs text-white/60 drop-shadow">
-            {new Date(activeStory?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
+        <div className="absolute top-6 left-3 right-3 flex items-center justify-between z-35 p-1 text-white">
+          <div className="flex items-center gap-3.5">
+            <img
+              src={activeUser.user.profilePic}
+              alt={activeUser.user.username}
+              className="w-8 h-8 rounded-full object-cover border border-white/40"
+            />
+            <span className="font-semibold text-sm drop-shadow">{activeUser.user.username}</span>
+            <span className="text-xs text-white/60 drop-shadow">
+              {new Date(activeStory?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+
+          {/* Delete Option for Story Owner */}
+          {currentUser?._id === activeUser.user._id && (
+            <button
+              onClick={() => handleDeleteStory(activeStory._id)}
+              className="p-1 text-white/70 hover:text-red-500 transition-colors z-45"
+              title="Delete Story"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Media display */}

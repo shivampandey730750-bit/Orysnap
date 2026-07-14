@@ -349,7 +349,13 @@ const ProfilePage = () => {
           </button>
           
           <div className="w-full max-w-xl">
-            <PostCard post={selectedPost} onPostDeleted={() => setSelectedPost(null)} />
+            <PostCard
+              post={selectedPost}
+              onPostDeleted={() => {
+                setSelectedPost(null);
+                fetchProfile();
+              }}
+            />
           </div>
         </div>
       )}
