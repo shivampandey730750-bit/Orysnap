@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import PostCard from '../components/PostCard';
 import StoryViewerModal from '../components/StoryViewerModal';
+import CreateStoryModal from '../components/CreateStoryModal';
 import { Plus, Compass, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -17,6 +18,10 @@ const FeedPage = () => {
   // Story modal state
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [activeStoryUserIdx, setActiveStoryUserIdx] = useState(0);
+
+  // Story upload states
+  const [storyFile, setStoryFile] = useState(null);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
 
   // Fetch feed stories
   const fetchStories = async () => {
@@ -89,25 +94,12 @@ const FeedPage = () => {
   };
 
   // Add story upload helper
-  const handleStoryUpload = async (e) => {
+  const handleStoryUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const formData = new FormData();
-    formData.append('media', file);
-
-    try {
-      await api.post('/api/stories', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      fetchStories();
-      alert('Story shared successfully!');
-    } catch (error) {
-      console.error('Story upload failed:', error);
-      alert('Story upload failed. Please try again.');
-    }
+    setStoryFile(file);
+    setIsCreateStoryOpen(true);
+    e.target.value = '';
   };
 
   return (
@@ -278,6 +270,20 @@ const FeedPage = () => {
         groupedStories={stories}
         initialUserIndex={activeStoryUserIdx}
         onStoryDeleted={fetchStories}
+      />
+
+      {/* Create Story Modal */}
+      <CreateStoryModal
+        isOpen={isCreateStoryOpen}
+        onClose={() => {
+          setIsCreateStoryOpen(false);
+          setStoryFile(null);
+        }}
+        file={storyFile}
+        onUploadSuccess={() => {
+          fetchStories();
+          alert('Story shared successfully!');
+        }}
       />
     </div>
   );

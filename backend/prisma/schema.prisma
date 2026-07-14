@@ -101,6 +101,8 @@ model Story {
   mediaUrl  String
   isVideo   Boolean  @default(false)
   expiresAt DateTime
+  songUrl   String?
+  songTitle String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

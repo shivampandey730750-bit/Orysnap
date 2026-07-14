@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Music } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -8,6 +8,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [isStoryMuted, setIsStoryMuted] = useState(false);
   const timerRef = useRef(null);
 
   const activeUser = groupedStories[currentUserIndex];
@@ -94,6 +95,18 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     }
   };
 
+  const getRemainingTime = (expiresAt) => {
+    if (!expiresAt) return '';
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) {
+      return `${hours}h ${minutes}m left`;
+    }
+    return `${minutes}m left`;
+  };
+
   const handleDeleteStory = async (storyId) => {
     if (!window.confirm('Are you sure you want to delete this story?')) return;
     try {
@@ -150,21 +163,45 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
               className="w-8 h-8 rounded-full object-cover border border-white/40"
             />
             <span className="font-semibold text-sm drop-shadow">{activeUser.user.username}</span>
-            <span className="text-xs text-white/60 drop-shadow">
-              {new Date(activeStory?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <span className="text-xs text-white/60 drop-shadow flex items-center gap-1.5">
+              <span>{new Date(activeStory?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="text-white/40">•</span>
+              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full font-bold border border-white/10">{getRemainingTime(activeStory?.expiresAt)}</span>
             </span>
           </div>
 
-          {/* Delete Option for Story Owner */}
-          {currentUser?._id === activeUser.user._id && (
-            <button
-              onClick={() => handleDeleteStory(activeStory._id)}
-              className="p-1 text-white/70 hover:text-red-500 transition-colors z-45"
-              title="Delete Story"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {activeStory?.songUrl && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsStoryMuted(!isStoryMuted);
+                }}
+                className="p-1 text-white/80 hover:text-white transition-colors z-45"
+                title={isStoryMuted ? 'Unmute' : 'Mute'}
+              >
+                {isStoryMuted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5 animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {/* Delete Option for Story Owner */}
+            {currentUser?._id === activeUser.user._id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteStory(activeStory._id);
+                }}
+                className="p-1 text-white/70 hover:text-red-500 transition-colors z-45"
+                title="Delete Story"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Media display */}
@@ -191,6 +228,39 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
           <div onClick={handlePrevStory} className="w-1/3 h-full cursor-pointer"></div>
           <div onClick={handleNextStory} className="w-2/3 h-full cursor-pointer"></div>
         </div>
+
+        {/* Background Music player */}
+        {activeStory?.songUrl && (
+          <audio
+            key={activeStory._id}
+            src={activeStory.songUrl}
+            autoPlay
+            loop
+            muted={isStoryMuted}
+          />
+        )}
+
+        {/* Beautiful Animated Music Sticker Overlay */}
+        {activeStory?.songUrl && (
+          <div className="absolute bottom-20 left-4 right-4 flex justify-center z-40 pointer-events-none">
+            <div className="bg-black/50 backdrop-blur-lg border border-white/20 px-4 py-2 rounded-full flex items-center gap-3 shadow-2xl text-white pointer-events-auto select-none max-w-[280px]">
+              <div className={`w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-inner ${
+                !isStoryMuted ? 'animate-spin [animation-duration:4s]' : ''
+              }`}>
+                <Music className="w-4 h-4 text-white" />
+              </div>
+              
+              <div className="flex flex-col text-left max-w-[180px] overflow-hidden">
+                <span className="text-[11px] font-extrabold tracking-wide truncate">
+                  {activeStory.songTitle || 'Internet Song'}
+                </span>
+                <span className="text-[9px] text-white/75 font-semibold tracking-wider uppercase truncate">
+                  Background Music
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Desktop control arrows */}
         <button

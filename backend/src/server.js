@@ -58,6 +58,22 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Call signaling
+  socket.on('call_user', ({ recipientId, isVideo, callerId, callerName, callerPic }) => {
+    socket.to(recipientId).emit('incoming_call', { isVideo, callerId, callerName, callerPic });
+    console.log(`Socket: User ${callerId} is calling ${recipientId}`);
+  });
+
+  socket.on('accept_call', ({ callerId, recipientId }) => {
+    socket.to(callerId).emit('call_accepted', { recipientId });
+    console.log(`Socket: User ${recipientId} accepted call from ${callerId}`);
+  });
+
+  socket.on('end_call', ({ targetId }) => {
+    socket.to(targetId).emit('call_ended');
+    console.log(`Socket: Call ended targeting ${targetId}`);
+  });
+
   // User disconnects
   socket.on('disconnect', () => {
     console.log(`Socket disconnected: ${socket.id}`);

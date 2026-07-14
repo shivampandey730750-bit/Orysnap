@@ -5,6 +5,8 @@ import { uploadToCloudOrLocal } from '../middlewares/uploadMiddleware.js';
 // @route   POST /api/stories
 // @access  Protected
 export const createStory = async (req, res) => {
+  const { songUrl, songTitle } = req.body;
+
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Story media file is required' });
@@ -24,6 +26,8 @@ export const createStory = async (req, res) => {
         mediaUrl,
         isVideo,
         expiresAt,
+        songUrl: songUrl || null,
+        songTitle: songTitle || null,
       },
       include: {
         user: {
@@ -42,6 +46,8 @@ export const createStory = async (req, res) => {
       mediaUrl: story.mediaUrl,
       isVideo: story.isVideo,
       expiresAt: story.expiresAt,
+      songUrl: story.songUrl,
+      songTitle: story.songTitle,
       createdAt: story.createdAt,
     });
   } catch (error) {
@@ -100,6 +106,9 @@ export const getFeedStories = async (req, res) => {
         isVideo: story.isVideo,
         viewers: story.viewers.map((v) => v.userId),
         createdAt: story.createdAt,
+        expiresAt: story.expiresAt,
+        songUrl: story.songUrl,
+        songTitle: story.songTitle,
         isSeen,
       });
 
