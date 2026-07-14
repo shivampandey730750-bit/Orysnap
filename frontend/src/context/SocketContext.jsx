@@ -17,8 +17,13 @@ export const SocketProvider = ({ children }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
 
   const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const pcRef = useRef(null);
+
   const audioCtxRef = useRef(null);
   const audioOscRef = useRef(null);
 
@@ -109,12 +114,26 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  const startLocalVideo = async () => {
+  const captureMedia = async (videoRequired) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log('Capturing media: video =', videoRequired);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: videoRequired ? { facingMode: 'user' } : false,
+        audio: true
+      });
       setLocalStream(stream);
+      return stream;
     } catch (err) {
-      console.warn('Failed to access camera:', err);
+      console.error('Failed to get user media:', err);
+      if (videoRequired) {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+          setLocalStream(audioStream);
+          return audioStream;
+        } catch (err2) {
+          console.error('Failed to get audio media fallback:', err2);
+        }
+      }
     }
   };
 
@@ -132,6 +151,18 @@ export const SocketProvider = ({ children }) => {
     }
   }, [localStream, activeCall]);
 
+  // Bind remote stream to video/audio players
+  useEffect(() => {
+    if (remoteStream) {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+      }
+    }
+  }, [remoteStream]);
+
   // Call duration counter
   useEffect(() => {
     let interval;
@@ -145,16 +176,55 @@ export const SocketProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [activeCall]);
 
-  const startCall = (targetUser, isVideo = false) => {
+  const createPeerConnection = (targetUserId, stream) => {
+    console.log('Creating RTCPeerConnection for:', targetUserId);
+    if (pcRef.current) {
+      pcRef.current.close();
+    }
+
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
+    });
+
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+    }
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && socket) {
+        socket.emit('webrtc_signal', {
+          targetId: targetUserId,
+          signal: { candidate: event.candidate }
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      console.log('Received remote track:', event.track.kind);
+      if (event.streams && event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    pcRef.current = pc;
+    return pc;
+  };
+
+  const startCall = async (targetUser, isVideo = false) => {
     setIsVideoCall(isVideo);
     setCallUser(targetUser);
     setActiveCall('ringing');
     setCallDuration(0);
     playRingtone();
 
-    if (isVideo) {
-      startLocalVideo();
-    }
+    const stream = await captureMedia(isVideo);
+    createPeerConnection(targetUser._id, stream);
 
     if (socket) {
       socket.emit('call_user', {
@@ -167,25 +237,41 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  const acceptCall = () => {
+  const acceptCall = async () => {
     if (!socket || !callUser) return;
     stopRingtone();
     setActiveCall('connected');
     
-    if (isVideoCall) {
-      startLocalVideo();
-    }
+    const stream = await captureMedia(isVideoCall);
+    const pc = createPeerConnection(callUser._id, stream);
 
     socket.emit('accept_call', {
       callerId: callUser._id,
       recipientId: user._id
     });
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('webrtc_signal', {
+        targetId: callUser._id,
+        signal: { offer }
+      });
+    } catch (err) {
+      console.error('Error creating WebRTC offer:', err);
+    }
   };
 
   const endCall = () => {
     if (!socket || !callUser) return;
     stopRingtone();
     stopLocalVideo();
+    
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    setRemoteStream(null);
     
     socket.emit('end_call', { targetId: callUser._id });
     
@@ -251,9 +337,44 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('call_ended', () => {
       stopRingtone();
       stopLocalVideo();
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      setRemoteStream(null);
       setActiveCall(null);
       setCallUser(null);
       setCallDuration(0);
+    });
+
+    newSocket.on('webrtc_signal', async ({ signal, senderId }) => {
+      console.log('Received WebRTC signal:', Object.keys(signal));
+      try {
+        let pc = pcRef.current;
+        if (!pc) {
+          if (signal.offer) {
+            console.log('Creating PeerConnection in response to remote offer');
+            const stream = localStream || await captureMedia(isVideoCall);
+            pc = createPeerConnection(senderId, stream);
+          } else {
+            console.warn('PeerConnection not initialized yet. Delaying candidate/answer processing...');
+            return;
+          }
+        }
+
+        if (signal.offer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          newSocket.emit('webrtc_signal', { targetId: senderId, signal: { answer } });
+        } else if (signal.answer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+        } else if (signal.candidate) {
+          await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        }
+      } catch (err) {
+        console.error('Error handling WebRTC signal:', err);
+      }
     });
 
     return () => {
@@ -277,6 +398,9 @@ export const SocketProvider = ({ children }) => {
       setIsSpeakerOn,
       localStream,
       localVideoRef,
+      remoteStream,
+      remoteVideoRef,
+      remoteAudioRef,
       startCall,
       acceptCall,
       endCall,

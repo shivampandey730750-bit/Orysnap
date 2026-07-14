@@ -18,6 +18,7 @@ import BottomNav from './components/BottomNav';
 import SearchSlider from './components/SearchSlider';
 import NotificationSlider from './components/NotificationSlider';
 import CreatePostModal from './components/CreatePostModal';
+import Avatar from './components/Avatar';
 
 // Layout Wrapper for protected routes
 const AppLayout = ({ children }) => {
@@ -34,6 +35,9 @@ const AppLayout = ({ children }) => {
     setIsSpeakerOn,
     localStream,
     localVideoRef,
+    remoteStream,
+    remoteVideoRef,
+    remoteAudioRef,
     acceptCall,
     endCall
   } = useSocket();
@@ -199,16 +203,34 @@ const AppLayout = ({ children }) => {
 
           {/* Avatar / Video Stream */}
           <div className="flex-1 flex items-center justify-center relative w-full max-w-sm my-6">
+            {/* Hidden Remote Audio player for voice calling */}
+            {!isVideoCall && activeCall === 'connected' && remoteStream && (
+              <audio ref={remoteAudioRef} autoPlay />
+            )}
+
             {isVideoCall && activeCall === 'connected' ? (
               <div className="w-full aspect-video rounded-3xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl relative">
-                {/* Mock User Stream */}
-                <img
-                  src={callUser?.profilePic}
-                  alt="active user stream"
-                  className="w-full h-full object-cover opacity-80"
-                />
+                {/* Live Remote Video Stream */}
+                {remoteStream ? (
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-950 gap-4">
+                    <Avatar
+                      src={callUser?.profilePic}
+                      alt={callUser?.username}
+                      className="w-20 h-20 border border-white/10"
+                      textClassName="text-2xl font-bold"
+                    />
+                    <span className="text-xs text-gray-400 animate-pulse">Connecting video...</span>
+                  </div>
+                )}
                 
-                {/* Mock Self Stream overlay - uses live camera stream */}
+                {/* Self Stream overlay - uses live camera stream */}
                 <div className="absolute bottom-4 right-4 w-28 aspect-video rounded-xl overflow-hidden bg-neutral-800 border-2 border-white shadow-lg z-20">
                   {localStream ? (
                     <video
@@ -219,11 +241,14 @@ const AppLayout = ({ children }) => {
                       className="w-full h-full object-cover scale-x-[-1]"
                     />
                   ) : (
-                    <img
-                      src={user?.profilePic}
-                      alt="your stream"
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="w-full h-full flex items-center justify-center bg-neutral-900">
+                      <Avatar
+                        src={user?.profilePic}
+                        alt={user?.username}
+                        className="w-10 h-10"
+                        textClassName="text-[10px] font-bold"
+                      />
+                    </div>
                   )}
                 </div>
                 
@@ -236,10 +261,11 @@ const AppLayout = ({ children }) => {
                 <div className={`w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl transition-all duration-500 absolute scale-125 opacity-30 ${
                   activeCall === 'ringing' || activeCall === 'incoming' ? 'animate-ping' : 'hidden'
                 }`}></div>
-                <img
+                <Avatar
                   src={callUser?.profilePic}
-                  alt="avatar"
-                  className="w-28 h-28 md:w-36 md:h-36 rounded-full object-cover border-4 border-white/20 relative z-10 shadow-2xl"
+                  alt={callUser?.username}
+                  className="w-28 h-28 md:w-36 md:h-36 border-4 border-white/20 relative z-10 shadow-2xl"
+                  textClassName="text-4xl md:text-5xl font-extrabold"
                 />
               </div>
             )}

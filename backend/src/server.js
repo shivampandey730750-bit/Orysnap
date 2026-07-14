@@ -29,6 +29,7 @@ io.on('connection', (socket) => {
   // User logs in and registers their socket
   socket.on('setup', (userId) => {
     if (!userId) return;
+    socket.userId = userId;
     socket.join(userId);
     console.log(`User ${userId} joined room`);
     
@@ -67,6 +68,10 @@ io.on('connection', (socket) => {
   socket.on('accept_call', ({ callerId, recipientId }) => {
     socket.to(callerId).emit('call_accepted', { recipientId });
     console.log(`Socket: User ${recipientId} accepted call from ${callerId}`);
+  });
+
+  socket.on('webrtc_signal', ({ targetId, signal }) => {
+    socket.to(targetId).emit('webrtc_signal', { signal, senderId: socket.userId || socket.id });
   });
 
   socket.on('end_call', ({ targetId }) => {
