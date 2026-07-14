@@ -20,6 +20,12 @@ const ProfilePage = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
 
+  const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+  const [isFollowingOpen, setIsFollowingOpen] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
+
   // Edit fields
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
@@ -135,6 +141,32 @@ const ProfilePage = () => {
     }
   };
 
+  const fetchFollowers = async () => {
+    setListLoading(true);
+    try {
+      const { data } = await api.get(`/api/follows/followers/${profile._id}`);
+      setFollowersList(data);
+      setIsFollowersOpen(true);
+    } catch (err) {
+      console.error('Failed to fetch followers:', err);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const fetchFollowing = async () => {
+    setListLoading(true);
+    try {
+      const { data } = await api.get(`/api/follows/following/${profile._id}`);
+      setFollowingList(data);
+      setIsFollowingOpen(true);
+    } catch (err) {
+      console.error('Failed to fetch following list:', err);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-12 text-sm text-gray-500 font-semibold">Loading profile...</div>;
   }
@@ -225,12 +257,18 @@ const ProfilePage = () => {
             <span className="text-gray-500 md:text-black">
               <strong className="text-gray-900 mr-0.5">{profile.postsCount}</strong> posts
             </span>
-            <span className="text-gray-500 md:text-black">
+            <button
+              onClick={fetchFollowers}
+              className="text-gray-500 md:text-black hover:underline focus:outline-none"
+            >
               <strong className="text-gray-900 mr-0.5">{profile.followersCount}</strong> followers
-            </span>
-            <span className="text-gray-500 md:text-black">
+            </button>
+            <button
+              onClick={fetchFollowing}
+              className="text-gray-500 md:text-black hover:underline focus:outline-none"
+            >
               <strong className="text-gray-900 mr-0.5">{profile.followingCount}</strong> following
-            </span>
+            </button>
           </div>
 
           {/* Bio & Links */}
@@ -444,6 +482,74 @@ const ProfilePage = () => {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Followers Modal */}
+      {isFollowersOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setIsFollowersOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 flex flex-col gap-4 relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setIsFollowersOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
+              <X className="w-6 h-6" />
+            </button>
+            <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 text-center font-sans">Followers</h3>
+            <div className="flex flex-col gap-3.5 max-h-[300px] overflow-y-auto">
+              {listLoading ? (
+                <p className="text-sm text-gray-400 text-center py-4">Loading followers...</p>
+              ) : followersList.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">No followers yet.</p>
+              ) : (
+                followersList.map((user) => (
+                  <Link
+                    key={user._id}
+                    to={`/profile/${user.username}`}
+                    onClick={() => setIsFollowersOpen(false)}
+                    className="flex items-center gap-3 p-1 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <img src={user.profilePic} alt={user.username} className="w-10 h-10 rounded-full object-cover border border-gray-150" />
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-sm text-gray-900">{user.username}</span>
+                      {user.bio && <span className="text-xs text-gray-400 truncate max-w-[180px]">{user.bio}</span>}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Following Modal */}
+      {isFollowingOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setIsFollowingOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 flex flex-col gap-4 relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setIsFollowingOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
+              <X className="w-6 h-6" />
+            </button>
+            <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 text-center font-sans">Following</h3>
+            <div className="flex flex-col gap-3.5 max-h-[300px] overflow-y-auto">
+              {listLoading ? (
+                <p className="text-sm text-gray-400 text-center py-4">Loading following...</p>
+              ) : followingList.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">Not following anyone yet.</p>
+              ) : (
+                followingList.map((user) => (
+                  <Link
+                    key={user._id}
+                    to={`/profile/${user.username}`}
+                    onClick={() => setIsFollowingOpen(false)}
+                    className="flex items-center gap-3 p-1 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <img src={user.profilePic} alt={user.username} className="w-10 h-10 rounded-full object-cover border border-gray-150" />
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-sm text-gray-900">{user.username}</span>
+                      {user.bio && <span className="text-xs text-gray-400 truncate max-w-[180px]">{user.bio}</span>}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

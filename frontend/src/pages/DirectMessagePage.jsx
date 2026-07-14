@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { MessageSquare, Send, Image, X, Circle, Phone, Video, PhoneOff, Mic, MicOff, Volume2 } from 'lucide-react';
@@ -43,21 +43,77 @@ const DirectMessagePage = () => {
     return () => clearInterval(interval);
   }, [activeCall]);
 
+  const audioCtxRef = useRef(null);
+  const audioOscRef = useRef(null);
+
+  const playRingtone = () => {
+    try {
+      if (!window.AudioContext && !window.webkitAudioContext) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(380, ctx.currentTime);
+      
+      // Repeating beep sequence
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      let time = ctx.currentTime;
+      for (let i = 0; i < 15; i++) {
+        gainNode.gain.setValueAtTime(0.12, time);
+        time += 1.0;
+        gainNode.gain.setValueAtTime(0, time);
+        time += 1.5;
+      }
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start();
+      audioOscRef.current = osc;
+    } catch (e) {
+      console.warn('Web Audio API blocked or not supported:', e);
+    }
+  };
+
+  const stopRingtone = () => {
+    try {
+      if (audioOscRef.current) {
+        audioOscRef.current.stop();
+        audioOscRef.current.disconnect();
+        audioOscRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const handleStartCall = (video = false) => {
     setIsVideoCall(video);
     setActiveCall('ringing');
     setCallDuration(0);
+    playRingtone();
     
-    // Simulate connection after 2.5 seconds
+    // Simulate connection after 4 seconds
     setTimeout(() => {
       setActiveCall((current) => {
-        if (current === 'ringing') return 'connected';
+        if (current === 'ringing') {
+          stopRingtone();
+          return 'connected';
+        }
         return current;
       });
-    }, 2500);
+    }, 4000);
   };
 
   const handleEndCall = () => {
+    stopRingtone();
     setActiveCall(null);
     setCallDuration(0);
   };
@@ -245,9 +301,9 @@ const DirectMessagePage = () => {
               const isOnline = onlineUsers.has(conv.user._id);
               const unread = conv.lastMessage?.sender !== currentUser?._id && !conv.lastMessage?.isRead;
               return (
-                <div
+                <Link
                   key={conv.user._id}
-                  onClick={() => setSelectedUser(conv.user)}
+                  to={`/direct/${conv.user._id}`}
                   className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
                     selectedUser?._id === conv.user._id ? 'bg-gray-100' : 'hover:bg-gray-50'
                   }`}
@@ -265,7 +321,7 @@ const DirectMessagePage = () => {
                       )}
                     </div>
 
-                    <div className="flex flex-col truncate">
+                    <div className="flex flex-col truncate text-left">
                       <span className={`text-sm text-gray-900 ${unread ? 'font-bold' : ''}`}>
                         {conv.user.username}
                       </span>
@@ -278,7 +334,7 @@ const DirectMessagePage = () => {
                   {unread && (
                     <Circle className="w-2.5 h-2.5 bg-instagram-blue text-instagram-blue rounded-full" />
                   )}
-                </div>
+                </Link>
               );
             })
           )}
