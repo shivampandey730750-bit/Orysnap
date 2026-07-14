@@ -13,6 +13,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const [isStoryMuted, setIsStoryMuted] = useState(false);
   const [viewers, setViewers] = useState([]);
   const [isViewersOpen, setIsViewersOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const timerRef = useRef(null);
 
   const [localGrouped, setLocalGrouped] = useState([]);
@@ -34,6 +35,8 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
       setCurrentStoryIndex(0);
       setProgress(0);
       setLocalGrouped(groupedStories);
+      setIsViewersOpen(false);
+      setShowDeleteConfirm(false);
     }
   }, [isOpen, initialUserIndex]);
 
@@ -50,6 +53,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     if (isOpen && activeStory && currentUser && activeUser) {
       const isOwner = (currentUser._id || currentUser.id) === (activeUser.user._id || activeUser.user.id);
       setIsViewersOpen(false); // Close viewer tray when story changes
+      setShowDeleteConfirm(false); // Close delete confirm overlay when story changes
       if (isOwner) {
         const fetchViewers = async () => {
           try {
@@ -68,7 +72,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
 
   // Auto progression timer
   useEffect(() => {
-    if (!isOpen || !activeStory || isViewersOpen) return; // Pause timer if viewersTray is open
+    if (!isOpen || !activeStory || isViewersOpen || showDeleteConfirm) return; // Pause timer if viewersTray or deleteConfirm is open
 
     const duration = activeStory.isVideo ? 10000 : 5000; // 10s for video, 5s for photo
     const intervalTime = 100;
@@ -88,7 +92,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen, currentUserIndex, currentStoryIndex, activeStory, isViewersOpen]);
+  }, [isOpen, currentUserIndex, currentStoryIndex, activeStory, isViewersOpen, showDeleteConfirm]);
 
   if (!isOpen || !activeUser) return null;
 
@@ -147,7 +151,6 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
       alert('Error: Story ID is undefined or missing.');
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this story?')) return;
     
     console.log('Attempting to delete story ID:', storyId);
     try {
@@ -264,7 +267,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteStory(activeStory?._id || activeStory?.id);
+                  setShowDeleteConfirm(true);
                 }}
                 className="p-1 text-white/70 hover:text-red-500 transition-colors z-45"
                 title="Delete Story"
@@ -383,6 +386,33 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
                     </Link>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Delete Confirmation Overlay */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-auto">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-[280px] flex flex-col gap-4 text-center shadow-2xl animate-scale-in text-white">
+              <h4 className="font-bold text-sm">Delete Story?</h4>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">This will permanently delete your story. You cannot undo this action.</p>
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    handleDeleteStory(activeStory?._id || activeStory?.id);
+                  }}
+                  className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-xl text-xs font-bold transition-all"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
