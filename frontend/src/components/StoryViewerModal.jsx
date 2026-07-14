@@ -11,7 +11,14 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const [isStoryMuted, setIsStoryMuted] = useState(false);
   const timerRef = useRef(null);
 
-  const activeUser = groupedStories[currentUserIndex];
+  const [localGrouped, setLocalGrouped] = useState(groupedStories);
+
+  // Sync localGrouped with prop updates
+  useEffect(() => {
+    setLocalGrouped(groupedStories);
+  }, [groupedStories]);
+
+  const activeUser = localGrouped[currentUserIndex];
   const activeStory = activeUser?.stories[currentStoryIndex];
 
   // Reset counters when opening/closing or switching users
@@ -20,8 +27,9 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
       setCurrentUserIndex(initialUserIndex);
       setCurrentStoryIndex(0);
       setProgress(0);
+      setLocalGrouped(groupedStories);
     }
-  }, [isOpen, initialUserIndex]);
+  }, [isOpen, initialUserIndex, groupedStories]);
 
   // Mark story as seen on display
   useEffect(() => {
@@ -112,11 +120,34 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     try {
       await api.delete(`/api/stories/${storyId}`);
       
+      // Update local state first to prevent index out of bounds crashes
+      const updatedGrouped = localGrouped.map((userGroup, uIdx) => {
+        if (uIdx === currentUserIndex) {
+          return {
+            ...userGroup,
+            stories: userGroup.stories.filter((s) => s._id !== storyId),
+          };
+        }
+        return userGroup;
+      });
+
+      const updatedUserStories = updatedGrouped[currentUserIndex].stories;
+
+      if (updatedUserStories.length === 0) {
+        // No stories left for this user, close modal
+        onClose();
+      } else {
+        // Safe index transition
+        if (currentStoryIndex >= updatedUserStories.length) {
+          setCurrentStoryIndex(updatedUserStories.length - 1);
+        }
+        setProgress(0);
+        setLocalGrouped(updatedGrouped);
+      }
+
       if (onStoryDeleted) {
         onStoryDeleted(storyId);
       }
-      
-      onClose(); // Always close the modal to prevent index out of bounds crashes
     } catch (error) {
       console.error('Failed to delete story:', error);
       alert('Failed to delete story. Please try again.');
