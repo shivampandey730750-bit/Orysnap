@@ -59,6 +59,11 @@ const DirectMessagePage = () => {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(380, ctx.currentTime);
       
+      // Explicitly resume context for Safari/Chrome compatibility
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
       // Repeating beep sequence
       gainNode.gain.setValueAtTime(0, ctx.currentTime);
       let time = ctx.currentTime;
