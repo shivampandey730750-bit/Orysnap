@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Heart, MessageCircle, Settings, Edit, X, Globe, UserCheck, UserPlus, Image } from 'lucide-react';
 import api from '../services/api';
 import PostCard from '../components/PostCard';
+import Avatar from '../components/Avatar';
 
 const ProfilePage = () => {
   const { username } = useParams();
@@ -188,13 +189,12 @@ const ProfilePage = () => {
       {/* Profile Header */}
       <div className="flex flex-col md:flex-row gap-6 md:gap-12 items-center md:items-start pb-8 border-b border-instagram-border mb-8">
         {/* Avatar */}
-        <div className="w-24 h-24 md:w-36 md:h-36 rounded-full overflow-hidden flex-shrink-0 border border-gray-200">
-          <img
-            src={profile.profilePic}
-            alt={profile.username}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <Avatar
+          src={profile.profilePic}
+          alt={profile.username}
+          className="w-24 h-24 md:w-36 md:h-36 border border-gray-200"
+          textClassName="text-3xl md:text-5xl font-extrabold"
+        />
 
         {/* Info */}
         <div className="flex-1 flex flex-col gap-4 text-center md:text-left w-full">
@@ -513,7 +513,7 @@ const ProfilePage = () => {
                     onClick={() => setIsFollowersOpen(false)}
                     className="flex items-center gap-3 p-1 rounded-xl hover:bg-gray-50 transition-colors"
                   >
-                    <img src={user.profilePic} alt={user.username} className="w-10 h-10 rounded-full object-cover border border-gray-150" />
+                    <Avatar src={user.profilePic} alt={user.username} className="w-10 h-10 border border-gray-150" />
                     <div className="flex flex-col text-left">
                       <span className="font-semibold text-sm text-gray-900">{user.username}</span>
                       {user.bio && <span className="text-xs text-gray-400 truncate max-w-[180px]">{user.bio}</span>}
@@ -547,7 +547,7 @@ const ProfilePage = () => {
                     onClick={() => setIsFollowingOpen(false)}
                     className="flex items-center gap-3 p-1 rounded-xl hover:bg-gray-50 transition-colors"
                   >
-                    <img src={user.profilePic} alt={user.username} className="w-10 h-10 rounded-full object-cover border border-gray-150" />
+                    <Avatar src={user.profilePic} alt={user.username} className="w-10 h-10 border border-gray-150" />
                     <div className="flex flex-col text-left">
                       <span className="font-semibold text-sm text-gray-900">{user.username}</span>
                       {user.bio && <span className="text-xs text-gray-400 truncate max-w-[180px]">{user.bio}</span>}

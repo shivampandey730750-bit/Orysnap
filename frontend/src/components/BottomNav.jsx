@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Home, Compass, MessageCircle, PlusSquare, User } from 'lucide-react';
 
+import Avatar from './Avatar';
+
 const BottomNav = ({ onCreateClick }) => {
   const { user } = useAuth();
   const location = useLocation();
@@ -46,12 +48,13 @@ const BottomNav = ({ onCreateClick }) => {
             isActive(`/profile/${user.username}`) ? 'text-black font-bold' : ''
           }`}
         >
-          <img
+          <Avatar
             src={user.profilePic}
             alt={user.username}
-            className={`w-6 h-6 rounded-full object-cover border ${
+            className={`w-6 h-6 border ${
               isActive(`/profile/${user.username}`) ? 'border-black' : 'border-gray-200'
             }`}
+            textClassName="text-[8px] font-extrabold"
           />
         </Link>
       )}

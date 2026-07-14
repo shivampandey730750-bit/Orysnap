@@ -13,6 +13,8 @@ import {
   Menu,
 } from 'lucide-react';
 
+import Avatar from './Avatar';
+
 const Sidebar = ({ onCreateClick, onSearchClick, onNotificationsClick, unreadNotifications = 0 }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -98,10 +100,11 @@ const Sidebar = ({ onCreateClick, onSearchClick, onNotificationsClick, unreadNot
                 isActive(`/profile/${user.username}`) ? 'font-bold' : ''
               }`}
             >
-              <img
+              <Avatar
                 src={user.profilePic}
                 alt={user.username}
-                className="w-6 h-6 rounded-full object-cover border border-gray-200"
+                className="w-6 h-6 border border-gray-200"
+                textClassName="text-[8px] font-extrabold"
               />
               <span className="text-sm">Profile</span>
             </Link>
