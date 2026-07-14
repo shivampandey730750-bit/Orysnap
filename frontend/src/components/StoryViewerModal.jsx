@@ -11,12 +11,14 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const [isStoryMuted, setIsStoryMuted] = useState(false);
   const timerRef = useRef(null);
 
-  const [localGrouped, setLocalGrouped] = useState(groupedStories);
+  const [localGrouped, setLocalGrouped] = useState([]);
 
-  // Sync localGrouped with prop updates
+  // Sync localGrouped with prop updates only when modal is closed
   useEffect(() => {
-    setLocalGrouped(groupedStories);
-  }, [groupedStories]);
+    if (!isOpen) {
+      setLocalGrouped(groupedStories);
+    }
+  }, [groupedStories, isOpen]);
 
   const activeUser = localGrouped[currentUserIndex];
   const activeStory = activeUser?.stories[currentStoryIndex];
@@ -78,7 +80,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     if (currentStoryIndex < activeUser.stories.length - 1) {
       // Next story of same user
       setCurrentStoryIndex(currentStoryIndex + 1);
-    } else if (currentUserIndex < groupedStories.length - 1) {
+    } else if (currentUserIndex < localGrouped.length - 1) {
       // Next user's stories
       setCurrentUserIndex(currentUserIndex + 1);
       setCurrentStoryIndex(0);
@@ -96,7 +98,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
       // Prev user's stories (start at their last story)
       const prevUserIndex = currentUserIndex - 1;
       setCurrentUserIndex(prevUserIndex);
-      setCurrentStoryIndex(groupedStories[prevUserIndex].stories.length - 1);
+      setCurrentStoryIndex(localGrouped[prevUserIndex].stories.length - 1);
     } else {
       // At start, loop or close? Let's just reset current story
       setProgress(0);
