@@ -116,11 +116,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
         onStoryDeleted(storyId);
       }
       
-      if (activeUser.stories.length <= 1) {
-        onClose();
-      } else {
-        handleNextStory();
-      }
+      onClose(); // Always close the modal to prevent index out of bounds crashes
     } catch (error) {
       console.error('Failed to delete story:', error);
       alert('Failed to delete story. Please try again.');
@@ -164,9 +160,19 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
             />
             <span className="font-semibold text-sm drop-shadow">{activeUser.user.username}</span>
             <span className="text-xs text-white/60 drop-shadow flex items-center gap-1.5">
-              <span>{new Date(activeStory?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              <span className="text-white/40">•</span>
-              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full font-bold border border-white/10">{getRemainingTime(activeStory?.expiresAt)}</span>
+              <span>
+                {activeStory?.createdAt
+                  ? new Date(activeStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : ''}
+              </span>
+              {activeStory?.expiresAt && (
+                <>
+                  <span className="text-white/40">•</span>
+                  <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full font-bold border border-white/10">
+                    {getRemainingTime(activeStory.expiresAt)}
+                  </span>
+                </>
+              )}
             </span>
           </div>
 
