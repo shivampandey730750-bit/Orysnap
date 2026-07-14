@@ -298,7 +298,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
         </div>
 
         {/* Navigation Overlays */}
-        <div className="absolute inset-0 flex justify-between z-30">
+        <div className="absolute top-20 bottom-20 left-0 right-0 flex justify-between z-30">
           <div onClick={handlePrevStory} className="w-1/3 h-full cursor-pointer"></div>
           <div onClick={handleNextStory} className="w-2/3 h-full cursor-pointer"></div>
         </div>
