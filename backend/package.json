@@ -5,8 +5,9 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "build": "prisma generate",
+    "start": "prisma generate && node src/server.js",
+    "dev": "prisma generate && nodemon src/server.js",
     "seed": "node src/utils/seed.js"
   },
   "dependencies": {
