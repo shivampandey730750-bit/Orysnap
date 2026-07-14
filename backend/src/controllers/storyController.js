@@ -198,3 +198,45 @@ export const deleteStory = async (req, res) => {
   }
 };
 
+// @desc    Get viewers of a story (owner only)
+// @route   GET /api/stories/:id/viewers
+// @access  Protected
+export const getStoryViewers = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const story = await prisma.story.findUnique({
+      where: { id },
+    });
+
+    if (!story) {
+      return res.status(404).json({ message: 'Story not found' });
+    }
+
+    if (story.userId !== req.user.id) {
+      return res.status(401).json({ message: 'You are not authorized to view this story\'s viewers' });
+    }
+
+    const viewerRecords = await prisma.storyViewer.findMany({
+      where: { storyId: id },
+    });
+
+    const viewerUserIds = viewerRecords.map((r) => r.userId);
+
+    const viewers = await prisma.user.findMany({
+      where: { id: { in: viewerUserIds } },
+      select: { id: true, username: true, profilePic: true },
+    });
+
+    const formatted = viewers.map((v) => ({
+      _id: v.id,
+      username: v.username,
+      profilePic: v.profilePic,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

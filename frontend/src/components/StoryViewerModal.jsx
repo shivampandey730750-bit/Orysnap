@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Music } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import Avatar from './Avatar';
 
 const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserIndex = 0, onStoryDeleted }) => {
   const { user: currentUser } = useAuth();
@@ -9,6 +11,8 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isStoryMuted, setIsStoryMuted] = useState(false);
+  const [viewers, setViewers] = useState([]);
+  const [isViewersOpen, setIsViewersOpen] = useState(false);
   const timerRef = useRef(null);
 
   const [localGrouped, setLocalGrouped] = useState([]);
@@ -41,9 +45,30 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     }
   }, [isOpen, currentUserIndex, currentStoryIndex]);
 
+  // Fetch story viewers when story changes (Story Owner only)
+  useEffect(() => {
+    if (isOpen && activeStory && currentUser && activeUser) {
+      const isOwner = (currentUser._id || currentUser.id) === (activeUser.user._id || activeUser.user.id);
+      setIsViewersOpen(false); // Close viewer tray when story changes
+      if (isOwner) {
+        const fetchViewers = async () => {
+          try {
+            const { data } = await api.get(`/api/stories/${activeStory._id || activeStory.id}/viewers`);
+            setViewers(data);
+          } catch (err) {
+            console.error('Failed to fetch story viewers:', err);
+          }
+        };
+        fetchViewers();
+      } else {
+        setViewers([]);
+      }
+    }
+  }, [isOpen, activeStory, currentUser, activeUser]);
+
   // Auto progression timer
   useEffect(() => {
-    if (!isOpen || !activeStory) return;
+    if (!isOpen || !activeStory || isViewersOpen) return; // Pause timer if viewersTray is open
 
     const duration = activeStory.isVideo ? 10000 : 5000; // 10s for video, 5s for photo
     const intervalTime = 100;
@@ -63,7 +88,7 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen, currentUserIndex, currentStoryIndex, activeStory]);
+  }, [isOpen, currentUserIndex, currentStoryIndex, activeStory, isViewersOpen]);
 
   if (!isOpen || !activeUser) return null;
 
@@ -192,10 +217,11 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
         {/* User Info Header */}
         <div className="absolute top-6 left-3 right-3 flex items-center justify-between z-35 p-1 text-white">
           <div className="flex items-center gap-3.5">
-            <img
+            <Avatar
               src={activeUser.user.profilePic}
               alt={activeUser.user.username}
-              className="w-8 h-8 rounded-full object-cover border border-white/40"
+              className="w-8 h-8 border border-white/40"
+              textClassName="text-[10px] font-extrabold"
             />
             <span className="font-semibold text-sm drop-shadow">{activeUser.user.username}</span>
             <span className="text-xs text-white/60 drop-shadow flex items-center gap-1.5">
@@ -302,6 +328,61 @@ const StoryViewerModal = ({ isOpen, onClose, groupedStories = [], initialUserInd
                 <span className="text-[9px] text-white/75 font-semibold tracking-wider uppercase truncate">
                   Background Music
                 </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Story Viewers list toggle (Story Owner only) */}
+        {isOpen && activeStory && (currentUser?._id === activeUser.user._id || currentUser?.id === activeUser.user.id) && (
+          <button
+            onClick={() => setIsViewersOpen(true)}
+            className="absolute bottom-5 left-4 z-40 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs text-white/90 font-semibold transition-all pointer-events-auto shadow-md"
+          >
+            <span className="text-sm">👁️</span>
+            <span>{viewers.length} Viewers</span>
+          </button>
+        )}
+
+        {/* Viewers List Modal Overlay */}
+        {isViewersOpen && (
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex flex-col justify-end pointer-events-auto">
+            <div className="bg-white rounded-t-3xl p-6 flex flex-col gap-4 max-h-[70%] overflow-y-auto text-gray-900 relative">
+              <button
+                onClick={() => setIsViewersOpen(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">
+                Seen by ({viewers.length})
+              </h3>
+              
+              <div className="flex flex-col gap-3.5 overflow-y-auto pr-1">
+                {viewers.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-6">No viewers yet.</p>
+                ) : (
+                  viewers.map((viewer) => (
+                    <Link
+                      key={viewer._id}
+                      to={`/profile/${viewer.username}`}
+                      onClick={() => {
+                        setIsViewersOpen(false);
+                        onClose();
+                      }}
+                      className="flex items-center gap-3 p-1 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      <Avatar
+                        src={viewer.profilePic}
+                        alt={viewer.username}
+                        className="w-9 h-9 border border-gray-200"
+                        textClassName="text-xs font-bold"
+                      />
+                      <span className="font-semibold text-xs text-gray-900">{viewer.username}</span>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
           </div>
