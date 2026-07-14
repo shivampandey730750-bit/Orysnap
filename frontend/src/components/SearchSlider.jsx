@@ -41,12 +41,12 @@ const SearchSlider = ({ isOpen, onClose }) => {
     <>
       {/* Backdrop */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/20 z-15" onClick={onClose}></div>
+        <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose}></div>
       )}
 
       {/* Slider Container */}
       <div
-        className={`fixed top-0 left-0 h-screen w-80 md:w-96 bg-white border-r border-instagram-border z-25 shadow-2xl transition-transform duration-300 ease-in-out p-6 flex flex-col gap-4 ${
+        className={`fixed top-0 left-0 h-screen w-80 md:w-96 bg-white border-r border-instagram-border z-50 shadow-2xl transition-transform duration-300 ease-in-out p-6 flex flex-col gap-4 ${
           isOpen ? 'translate-x-0 md:translate-x-64' : '-translate-x-full'
         }`}
       >

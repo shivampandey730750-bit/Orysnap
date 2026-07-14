@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { Search, Heart } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import api from './services/api';
@@ -113,6 +114,32 @@ const AppLayout = ({ children }) => {
         unreadNotifications={unreadCount}
       />
 
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-instagram-border sticky top-0 z-20 w-full">
+        <Link to="/" className="text-xl font-bold tracking-wider font-sans italic bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+          OrySnap
+        </Link>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className="text-gray-700 hover:text-black transition-colors"
+          >
+            <Search className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            className="text-gray-700 hover:text-black transition-colors relative"
+          >
+            <Heart className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Mobile Bottom Navigation */}
       <BottomNav onCreateClick={() => setIsCreateOpen(true)} />
 
@@ -168,7 +195,7 @@ const App = () => {
             />
             
             <Route
-              path="/direct"
+              path="/direct/:userId?"
               element={
                 <AppLayout>
                   <DirectMessagePage />

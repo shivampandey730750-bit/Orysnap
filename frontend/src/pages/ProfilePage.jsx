@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Heart, MessageCircle, Settings, Edit, X, Globe, UserCheck, UserPlus, Image } from 'lucide-react';
 import api from '../services/api';
@@ -7,7 +7,8 @@ import PostCard from '../components/PostCard';
 
 const ProfilePage = () => {
   const { username } = useParams();
-  const { user: currentUser, updateUser } = useAuth();
+  const { user: currentUser, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -16,6 +17,7 @@ const ProfilePage = () => {
   
   // Modals state
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
 
   // Edit fields
@@ -105,11 +107,31 @@ const ProfilePage = () => {
       setIsEditOpen(false);
       setEditFile(null);
       setEditFilePreview('');
-      fetchProfile();
+      
+      if (data.username !== username) {
+        navigate(`/profile/${data.username}`);
+      } else {
+        fetchProfile();
+      }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update profile.');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('WARNING: Are you absolutely sure you want to delete your account? This action is permanent and cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      await api.delete('/api/users/profile');
+      logout();
+      setIsSettingsOpen(false);
+      alert('Your account has been deleted successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete account. Please try again.');
     }
   };
 
@@ -157,31 +179,43 @@ const ProfilePage = () => {
                     <Edit className="w-3.5 h-3.5" />
                     Edit Profile
                   </button>
-                  <button className="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                  >
                     <Settings className="w-4 h-4 text-gray-700" />
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={handleFollowToggle}
-                  className={`flex items-center gap-1.5 px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow ${
-                    profile.isFollowing
-                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                      : 'bg-instagram-blue hover:bg-instagram-hoverblue text-white'
-                  }`}
-                >
-                  {profile.isFollowing ? (
-                    <>
-                      <UserCheck className="w-4 h-4" />
-                      Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      Follow
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleFollowToggle}
+                    className={`flex items-center gap-1.5 px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow ${
+                      profile.isFollowing
+                        ? 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                        : 'bg-instagram-blue hover:bg-instagram-hoverblue text-white'
+                    }`}
+                  >
+                    {profile.isFollowing ? (
+                      <>
+                        <UserCheck className="w-4 h-4" />
+                        Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        Follow
+                      </>
+                    )}
+                  </button>
+                  <Link
+                    to={`/direct/${profile._id}`}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs md:text-sm font-semibold transition-colors text-gray-800"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Message
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -362,14 +396,54 @@ const ProfilePage = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={editLoading}
-                className="w-full bg-instagram-blue hover:bg-instagram-hoverblue text-white py-2.5 rounded-xl font-semibold mt-2 text-sm shadow transition-colors disabled:opacity-50"
-              >
-                {editLoading ? 'Saving...' : 'Save Changes'}
-              </button>
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="w-full bg-instagram-blue hover:bg-instagram-hoverblue text-white py-2.5 rounded-xl font-semibold text-sm shadow transition-colors disabled:opacity-50"
+                >
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditOpen(false);
+                    handleDeleteAccount();
+                  }}
+                  className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-2.5 rounded-xl font-semibold text-sm border border-red-150 transition-colors"
+                >
+                  Delete Account
+                </button>
+              </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Settings / Logout Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 transition-opacity" onClick={() => setIsSettingsOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl flex flex-col items-center divide-y divide-gray-100 text-sm" onClick={(e) => e.stopPropagation()}>
+             <button
+              onClick={() => {
+                logout();
+                setIsSettingsOpen(false);
+              }}
+              className="w-full text-center py-4 text-gray-700 font-semibold hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            >
+              Log Out
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              className="w-full text-center py-4 text-red-600 font-bold hover:bg-red-50/50 active:bg-red-50 transition-colors"
+            >
+              Delete Account
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="w-full text-center py-4 text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

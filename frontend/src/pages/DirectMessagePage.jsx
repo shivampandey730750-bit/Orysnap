@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { MessageSquare, Send, Image, X, Circle } from 'lucide-react';
+import { MessageSquare, Send, Image, X, Circle, Phone, Video, PhoneOff, Mic, MicOff, Volume2 } from 'lucide-react';
 import api from '../services/api';
 
 const DirectMessagePage = () => {
+  const { userId } = useParams();
   const { user: currentUser } = useAuth();
   const { socket, onlineUsers } = useSocket();
 
@@ -17,9 +19,70 @@ const DirectMessagePage = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
 
+  // Mock Call state
+  const [activeCall, setActiveCall] = useState(null); // null, 'ringing', 'connected'
+  const [isVideoCall, setIsVideoCall] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false);
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  // Handle call duration ticking
+  useEffect(() => {
+    let interval;
+    if (activeCall === 'connected') {
+      interval = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setCallDuration(0);
+    }
+    return () => clearInterval(interval);
+  }, [activeCall]);
+
+  const handleStartCall = (video = false) => {
+    setIsVideoCall(video);
+    setActiveCall('ringing');
+    setCallDuration(0);
+    
+    // Simulate connection after 2.5 seconds
+    setTimeout(() => {
+      setActiveCall((current) => {
+        if (current === 'ringing') return 'connected';
+        return current;
+      });
+    }, 2500);
+  };
+
+  const handleEndCall = () => {
+    setActiveCall(null);
+    setCallDuration(0);
+  };
+
+  // Handle optional route userId parameter for quick-chat initiation
+  useEffect(() => {
+    if (!userId) return;
+
+    if (selectedUser?._id === userId) return;
+
+    const existingConv = conversations.find(c => c.user._id === userId);
+    if (existingConv) {
+      setSelectedUser(existingConv.user);
+    } else {
+      const fetchSelectedUser = async () => {
+        try {
+          const { data } = await api.get(`/api/users/find/${userId}`);
+          setSelectedUser(data);
+        } catch (error) {
+          console.error('Failed to fetch chat user details:', error);
+        }
+      };
+      fetchSelectedUser();
+    }
+  }, [userId, conversations, selectedUser]);
 
   // Fetch conversations summary
   const fetchConversations = async () => {
@@ -257,6 +320,26 @@ const DirectMessagePage = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Call Controls */}
+              <div className="flex items-center gap-4 text-gray-600 mr-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleStartCall(false)}
+                  className="p-2 hover:bg-gray-50 rounded-xl hover:text-instagram-blue transition-all"
+                  title="Voice Call"
+                >
+                  <Phone className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStartCall(true)}
+                  className="p-2 hover:bg-gray-50 rounded-xl hover:text-instagram-blue transition-all"
+                  title="Video Call"
+                >
+                  <Video className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Message Area */}
@@ -376,6 +459,106 @@ const DirectMessagePage = () => {
           </>
         )}
       </div>
+
+      {/* Call Overlay UI */}
+      {activeCall && (
+        <div className="fixed inset-0 bg-neutral-950/90 backdrop-blur-lg z-50 flex flex-col justify-between items-center p-8 md:p-12 text-white select-none animate-fade-in">
+          {/* Top Header info */}
+          <div className="flex flex-col items-center gap-2 mt-8">
+            <span className="text-xs uppercase tracking-wider text-gray-400 font-bold">
+              {isVideoCall ? 'Video Call' : 'Voice Call'}
+            </span>
+            <h3 className="text-2xl font-bold">{selectedUser?.username}</h3>
+            <span className="text-sm font-semibold text-instagram-blue animate-pulse">
+              {activeCall === 'ringing' ? 'Ringing...' : 'Connected'}
+            </span>
+          </div>
+
+          {/* Avatar Ringing / Video Screen */}
+          <div className="flex-1 flex items-center justify-center relative w-full max-w-sm my-6">
+            {isVideoCall && activeCall === 'connected' ? (
+              <div className="w-full aspect-video rounded-3xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl relative">
+                {/* Mock User Stream */}
+                <img
+                  src={selectedUser?.profilePic}
+                  alt="active user stream"
+                  className="w-full h-full object-cover opacity-80"
+                />
+                
+                {/* Mock Self Stream in overlay */}
+                <div className="absolute bottom-4 right-4 w-28 aspect-video rounded-xl overflow-hidden bg-neutral-800 border-2 border-white shadow-lg">
+                  <img
+                    src={currentUser?.profilePic}
+                    alt="your stream"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                
+                <span className="absolute top-4 left-4 text-xs font-semibold bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-md">
+                  Active Video Feed
+                </span>
+              </div>
+            ) : (
+              <div className="relative flex items-center justify-center">
+                <div className={`w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl transition-all duration-500 absolute scale-125 opacity-30 ${
+                  activeCall === 'ringing' ? 'animate-ping' : 'hidden'
+                }`}></div>
+                <img
+                  src={selectedUser?.profilePic}
+                  alt="avatar"
+                  className="w-28 h-28 md:w-36 md:h-36 rounded-full object-cover border-4 border-white/20 relative z-10 shadow-2xl"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Active Call details / Action controls */}
+          <div className="flex flex-col items-center gap-6 w-full max-w-sm mb-6">
+            {activeCall === 'connected' && (
+              <div className="text-sm font-mono tracking-widest text-gray-300">
+                {Math.floor(callDuration / 60).toString().padStart(2, '0')}:
+                {(callDuration % 60).toString().padStart(2, '0')}
+              </div>
+            )}
+
+            <div className="flex items-center gap-6 md:gap-8 justify-center">
+              {/* Mute button */}
+              <button
+                type="button"
+                onClick={() => setIsMuted(!isMuted)}
+                className={`p-3.5 rounded-full transition-colors ${
+                  isMuted ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+
+              {/* End Call Button */}
+              <button
+                type="button"
+                onClick={handleEndCall}
+                className="p-5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/30"
+                title="End Call"
+              >
+                <PhoneOff className="w-6 h-6" />
+              </button>
+
+              {/* Speaker button */}
+              <button
+                type="button"
+                onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+                className={`p-3.5 rounded-full transition-colors ${
+                  isSpeakerOn ? 'bg-instagram-blue text-white' : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+                title="Toggle Speaker"
+              >
+                <Volume2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

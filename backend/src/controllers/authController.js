@@ -9,11 +9,26 @@ export const registerUser = async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (cleanUsername.includes(' ')) {
+      return res.status(400).json({ message: 'Username cannot contain spaces' });
+    }
+
+    if (cleanUsername.length < 3) {
+      return res.status(400).json({ message: 'Username must be at least 3 characters long' });
+    }
+
     const userExists = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: email.toLowerCase() },
-          { username: username.toLowerCase() },
+          { email: cleanEmail },
+          { username: cleanUsername },
         ],
       },
     });
@@ -27,8 +42,8 @@ export const registerUser = async (req, res) => {
 
     const user = await prisma.user.create({
       data: {
-        username: username.toLowerCase(),
-        email: email.toLowerCase(),
+        username: cleanUsername,
+        email: cleanEmail,
         password: hashedPassword,
       },
     });
@@ -54,11 +69,17 @@ export const loginUser = async (req, res) => {
   const { emailOrUsername, password } = req.body;
 
   try {
+    if (!emailOrUsername || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const cleanEmailOrUsername = emailOrUsername.trim().toLowerCase();
+
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: emailOrUsername.toLowerCase() },
-          { username: emailOrUsername.toLowerCase() },
+          { email: cleanEmailOrUsername },
+          { username: cleanEmailOrUsername },
         ],
       },
     });

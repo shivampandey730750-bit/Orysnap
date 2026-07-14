@@ -22,9 +22,12 @@ const AuthPage = () => {
     setMessage('');
     setLoading(true);
 
+    const cleanEmail = email.trim();
+    const cleanUsername = username.trim();
+
     try {
       if (isReset) {
-        const res = await resetUserPassword(email, newPassword);
+        const res = await resetUserPassword(cleanEmail, newPassword);
         if (res.success) {
           setMessage(res.message);
           setIsReset(false);
@@ -33,14 +36,24 @@ const AuthPage = () => {
           setError(res.message);
         }
       } else if (isLogin) {
-        const res = await login(email, password); // email field doubles as username
+        const res = await login(cleanEmail, password); // email field doubles as username
         if (res.success) {
           navigate('/');
         } else {
           setError(res.message);
         }
       } else {
-        const res = await register(username, email, password);
+        if (cleanUsername.includes(' ')) {
+          setError('Username cannot contain spaces.');
+          setLoading(false);
+          return;
+        }
+        if (cleanUsername.length < 3) {
+          setError('Username must be at least 3 characters long.');
+          setLoading(false);
+          return;
+        }
+        const res = await register(cleanUsername, cleanEmail, password);
         if (res.success) {
           navigate('/');
         } else {

@@ -105,14 +105,23 @@ export const updateUserProfile = async (req, res) => {
     }
 
     // Check username change
-    if (req.body.username && req.body.username.toLowerCase() !== user.username) {
-      const usernameExists = await prisma.user.findUnique({
-        where: { username: req.body.username.toLowerCase() },
-      });
-      if (usernameExists) {
-        return res.status(400).json({ message: 'Username is already taken' });
+    if (req.body.username) {
+      const cleanUsername = req.body.username.trim().toLowerCase();
+      if (cleanUsername !== user.username) {
+        if (cleanUsername.includes(' ') || !cleanUsername) {
+          return res.status(400).json({ message: 'Username cannot contain spaces or be empty' });
+        }
+        if (cleanUsername.length < 3) {
+          return res.status(400).json({ message: 'Username must be at least 3 characters long' });
+        }
+        const usernameExists = await prisma.user.findUnique({
+          where: { username: cleanUsername },
+        });
+        if (usernameExists) {
+          return res.status(400).json({ message: 'Username is already taken' });
+        }
+        dataToUpdate.username = cleanUsername;
       }
-      dataToUpdate.username = req.body.username.toLowerCase();
     }
 
     // Handle profile pic upload
@@ -194,3 +203,49 @@ export const searchUsers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Delete user account
+// @route   DELETE /api/users/profile
+// @access  Protected
+export const deleteUserAccount = async (req, res) => {
+  try {
+    await prisma.user.delete({
+      where: { id: req.user.id },
+    });
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get user by ID
+// @route   GET /api/users/find/:id
+// @access  Protected
+export const getUserById = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: {
+        id: true,
+        username: true,
+        profilePic: true,
+        bio: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      _id: user.id,
+      username: user.username,
+      profilePic: user.profilePic,
+      bio: user.bio,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
